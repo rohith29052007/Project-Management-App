@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
+import { selectCurrentWorkspace } from "../features/selectors";
 import { format } from "date-fns";
 import { createTask } from "../features/workspaceSlice";
 import toast from "react-hot-toast";
 
 export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, projectId }) {
     const dispatch = useDispatch();
-    const currentWorkspace = useSelector((state) => state.workspace?.currentWorkspace || null);
+    const currentWorkspace = useSelector(selectCurrentWorkspace);
     const project = currentWorkspace?.projects.find((p) => p.id === projectId);
     const teamMembers = project?.members || [];
 

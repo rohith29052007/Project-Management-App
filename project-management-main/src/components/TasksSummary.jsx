@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Clock, AlertTriangle, User } from "lucide-react";
 import { useSelector } from "react-redux";
+import { selectCurrentWorkspace } from "../features/selectors";
 
 export default function TasksSummary() {
 
-    const { currentWorkspace } = useSelector((state) => state.workspace);
+    const currentWorkspace = useSelector(selectCurrentWorkspace);
     const user = { id: 'user_1' }
     const [tasks, setTasks] = useState([]);
 

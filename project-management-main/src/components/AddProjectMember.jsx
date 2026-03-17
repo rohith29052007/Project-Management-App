@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Mail, UserPlus } from "lucide-react";
 import { useSelector } from "react-redux";
+import { selectCurrentWorkspace } from "../features/selectors";
 import { useSearchParams } from "react-router-dom";
 
 const AddProjectMember = ({ isDialogOpen, setIsDialogOpen }) => {
@@ -9,7 +10,7 @@ const AddProjectMember = ({ isDialogOpen, setIsDialogOpen }) => {
 
     const id = searchParams.get('id');
 
-    const currentWorkspace = useSelector((state) => state.workspace?.currentWorkspace || null);
+    const currentWorkspace = useSelector(selectCurrentWorkspace);
 
     const project = currentWorkspace?.projects.find((p) => p.id === id);
     const projectMembersEmails = project?.members.map((member) => member.user.email);

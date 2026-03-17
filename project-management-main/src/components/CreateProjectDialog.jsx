@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { XIcon } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
+import { selectCurrentWorkspace } from "../features/selectors";
 import { createProject } from "../features/workspaceSlice";
 import toast from "react-hot-toast";
 
 const CreateProjectDialog = ({ isDialogOpen, setIsDialogOpen }) => {
     const dispatch = useDispatch();
-    const { currentWorkspace } = useSelector((state) => state.workspace);
+    const currentWorkspace = useSelector(selectCurrentWorkspace);
 
     const [formData, setFormData] = useState({
         name: "",

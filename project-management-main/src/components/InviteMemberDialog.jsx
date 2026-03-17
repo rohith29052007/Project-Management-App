@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Mail, UserPlus } from "lucide-react";
 import { useSelector } from "react-redux";
+import { selectCurrentWorkspace } from "../features/selectors";
 
 const InviteMemberDialog = ({ isDialogOpen, setIsDialogOpen }) => {
 
-    const currentWorkspace = useSelector((state) => state.workspace?.currentWorkspace || null);
+    const currentWorkspace = useSelector(selectCurrentWorkspace);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         email: "",

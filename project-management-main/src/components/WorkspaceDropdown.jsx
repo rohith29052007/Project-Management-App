@@ -2,13 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check, Plus } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { setCurrentWorkspace } from "../features/workspaceSlice";
+import { selectWorkspaces, selectCurrentWorkspace } from "../features/selectors";
 import { useNavigate } from "react-router-dom";
 import { dummyWorkspaces } from "../assets/assets";
 
 function WorkspaceDropdown() {
 
-    const { workspaces } = useSelector((state) => state.workspace);
-    const currentWorkspace = useSelector((state) => state.workspace?.currentWorkspace || null);
+    const workspaces = useSelector(selectWorkspaces);
+    const currentWorkspace = useSelector(selectCurrentWorkspace);
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 

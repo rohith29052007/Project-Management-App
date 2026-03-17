@@ -5,48 +5,48 @@ import { workspaceAPI, projectAPI, taskAPI, commentAPI } from "../services/api";
 export const fetchWorkspaces = createAsyncThunk(
     'workspace/fetchWorkspaces',
     async () => {
-        const workspaces = await workspaceAPI.getAll();
-        return workspaces;
+        const response = await workspaceAPI.getAll();
+        return response.data || response || [];
     }
 );
 
 export const fetchWorkspaceById = createAsyncThunk(
     'workspace/fetchWorkspaceById',
     async (id) => {
-        const workspace = await workspaceAPI.getById(id);
-        return workspace;
+        const response = await workspaceAPI.getById(id);
+        return response.data || response;
     }
 );
 
 export const createWorkspace = createAsyncThunk(
     'workspace/createWorkspace',
     async (workspaceData) => {
-        const workspace = await workspaceAPI.create(workspaceData);
-        return workspace;
+        const response = await workspaceAPI.create(workspaceData);
+        return response.data || response;
     }
 );
 
 export const updateWorkspace = createAsyncThunk(
     'workspace/updateWorkspace',
     async ({ id, data }) => {
-        const workspace = await workspaceAPI.update(id, data);
-        return workspace;
+        const response = await workspaceAPI.update(id, data);
+        return response.data || response;
     }
 );
 
 export const createProject = createAsyncThunk(
     'workspace/createProject',
     async (projectData) => {
-        const project = await projectAPI.create(projectData);
-        return project;
+        const response = await projectAPI.create(projectData);
+        return response.data || response;
     }
 );
 
 export const updateProject = createAsyncThunk(
     'workspace/updateProject',
     async ({ id, data }) => {
-        const project = await projectAPI.update(id, data);
-        return project;
+        const response = await projectAPI.update(id, data);
+        return response.data || response;
     }
 );
 
@@ -61,16 +61,16 @@ export const deleteProject = createAsyncThunk(
 export const createTask = createAsyncThunk(
     'workspace/createTask',
     async (taskData) => {
-        const task = await taskAPI.create(taskData);
-        return task;
+        const response = await taskAPI.create(taskData);
+        return response.data || response;
     }
 );
 
 export const updateTask = createAsyncThunk(
     'workspace/updateTask',
     async ({ id, data }) => {
-        const task = await taskAPI.update(id, data);
-        return task;
+        const response = await taskAPI.update(id, data);
+        return response.data || response;
     }
 );
 
@@ -85,8 +85,8 @@ export const deleteTask = createAsyncThunk(
 export const createComment = createAsyncThunk(
     'workspace/createComment',
     async ({ taskId, data }) => {
-        const comment = await commentAPI.create(taskId, data);
-        return comment;
+        const response = await commentAPI.create(taskId, data);
+        return response.data || response;
     }
 );
 

@@ -1,15 +1,15 @@
+import { getAccessToken } from './supabase';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const apiRequest = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
-    const token = localStorage.getItem('token');
-    const apiKey = localStorage.getItem('apiKey'); // Optional API key
+    const token = await getAccessToken(); // Get Supabase token
     
     const config = {
         headers: {
             'Content-Type': 'application/json',
             ...(token && { 'Authorization': `Bearer ${token}` }),
-            ...(apiKey && !token && { 'X-API-Key': apiKey }),
             ...options.headers,
         },
         ...options,
@@ -26,13 +26,10 @@ const apiRequest = async (endpoint, options = {}) => {
         if (!response.ok) {
             // Handle 401 - unauthorized
             if (response.status === 401) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                if (window.location.pathname !== '/login') {
-                    window.location.href = '/login';
-                }
+                // Supabase handles token refresh automatically
+                window.location.href = '/login';
             }
-            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+            throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
         }
 
         return data;

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { CheckSquareIcon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
 import { useSelector } from 'react-redux';
+import { selectCurrentWorkspace } from '../features/selectors';
 import { Link } from 'react-router-dom';
 
 function MyTasksSidebar() {
 
     const user = { id: 'user_1' }
 
-    const { currentWorkspace } = useSelector((state) => state.workspace);
+    const currentWorkspace = useSelector(selectCurrentWorkspace);
     const [showMyTasks, setShowMyTasks] = useState(false);
     const [myTasks, setMyTasks] = useState([]);
 

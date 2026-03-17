@@ -7,15 +7,14 @@ import { PrismaClient } from '@prisma/client';
 
 // Middleware imports
 import { errorHandler, notFound } from './middleware/errorHandler.js';
-import { securityHeaders, apiLimiter, requestSizeLimiter } from './middleware/security.js';
+import { securityHeaders, apiLimiter, requestSizeLimiter, authLimiter } from './middleware/security.js';
 import { requestLogger } from './middleware/logger.js';
+import { authenticateSupabase, authenticateSupabaseAny } from './middleware/supabaseAuth.js';
 import { asyncHandler } from './utils/asyncHandler.js';
 import { sendSuccess, sendCreated, sendError } from './utils/response.js';
 import { generateUniqueSlug } from './utils/slugify.js';
-import { authenticate, authenticateAny } from './middleware/auth.js';
 
 // Route imports
-import authRoutes from './routes/auth.js';
 import apiKeyRoutes from './routes/apiKeys.js';
 
 // Validation imports
@@ -27,8 +26,6 @@ import {
     validateComment
 } from './middleware/validation.js';
 
-dotenv.config();
-
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
@@ -37,8 +34,10 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // ==================== MIDDLEWARE ====================
 app.use(securityHeaders);
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*',
-    credentials: true
+    origin: process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -48,20 +47,24 @@ app.use(requestLogger);
 // Apply rate limiting to API routes
 app.use('/api/', apiLimiter);
 
+// Apply stricter rate limiting to auth routes
+app.use('/api/auth', authLimiter);
+
 // ==================== HEALTH CHECK ====================
 app.get('/api/health', (req, res) => {
     sendSuccess(res, {
         status: 'ok',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        environment: NODE_ENV
+        environment: NODE_ENV,
+        auth: 'Supabase'
     }, 'Server is running');
 });
 
 // ==================== AUTHENTICATION ROUTES ====================
-app.use('/api/auth', authRoutes);
-
-// ==================== API KEY ROUTES ====================
+// Authentication is handled by Supabase on the frontend
+// Backend only validates Supabase JWT tokens
+// API Key routes for service-to-service communication
 app.use('/api/api-keys', apiKeyRoutes);
 
 // ==================== USER ROUTES ====================
@@ -89,7 +92,7 @@ app.get('/api/users/:username', asyncHandler(async (req, res) => {
 }));
 
 // Protected route - get all users (admin only in future)
-app.get('/api/users', authenticateAny, asyncHandler(async (req, res) => {
+app.get('/api/users', authenticateSupabaseAny, asyncHandler(async (req, res) => {
     const users = await prisma.user.findMany({
         orderBy: { createdAt: 'desc' },
         select: {
@@ -105,7 +108,7 @@ app.get('/api/users', authenticateAny, asyncHandler(async (req, res) => {
 }));
 
 // Get user by ID (protected)
-app.get('/api/users/id/:id', authenticateAny, validateUser.getById, asyncHandler(async (req, res) => {
+app.get('/api/users/id/:id', authenticateSupabaseAny, validateUser.getById, asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({
         where: { id: req.params.id },
         select: {
@@ -138,7 +141,7 @@ app.get('/api/users/id/:id', authenticateAny, validateUser.getById, asyncHandler
 
 // ==================== WORKSPACE ROUTES ====================
 // Protected - require authentication
-app.get('/api/workspaces', authenticateAny, asyncHandler(async (req, res) => {
+app.get('/api/workspaces', authenticateSupabaseAny, asyncHandler(async (req, res) => {
     const workspaces = await prisma.workspace.findMany({
         include: {
             owner: {
@@ -241,7 +244,7 @@ app.get('/api/workspaces/:id', validateWorkspace.getById, asyncHandler(async (re
     sendSuccess(res, workspace);
 }));
 
-app.post('/api/workspaces', authenticateAny, validateWorkspace.create, asyncHandler(async (req, res) => {
+app.post('/api/workspaces', authenticateSupabaseAny, validateWorkspace.create, asyncHandler(async (req, res) => {
     const { name, description, ownerId, image_url, settings } = req.body;
     
     // Generate unique slug
@@ -286,7 +289,7 @@ app.post('/api/workspaces', authenticateAny, validateWorkspace.create, asyncHand
     sendCreated(res, workspace, 'Workspace created successfully');
 }));
 
-app.put('/api/workspaces/:id', authenticateAny, validateWorkspace.update, asyncHandler(async (req, res) => {
+app.put('/api/workspaces/:id', authenticateSupabaseAny, validateWorkspace.update, asyncHandler(async (req, res) => {
     const { name, description, image_url, settings } = req.body;
     
     // Check if workspace exists
@@ -349,7 +352,7 @@ app.put('/api/workspaces/:id', authenticateAny, validateWorkspace.update, asyncH
     sendSuccess(res, workspace, 'Workspace updated successfully');
 }));
 
-app.delete('/api/workspaces/:id', authenticateAny, validateWorkspace.delete, asyncHandler(async (req, res) => {
+app.delete('/api/workspaces/:id', authenticateSupabaseAny, validateWorkspace.delete, asyncHandler(async (req, res) => {
     const workspace = await prisma.workspace.findUnique({ where: { id: req.params.id } });
     if (!workspace) {
         return sendError(res, 'Workspace not found', 404);
@@ -363,7 +366,7 @@ app.delete('/api/workspaces/:id', authenticateAny, validateWorkspace.delete, asy
 }));
 
 // ==================== WORKSPACE MEMBER ROUTES ====================
-app.post('/api/workspaces/:workspaceId/members', asyncHandler(async (req, res) => {
+app.post('/api/workspaces/:workspaceId/members', authenticateSupabaseAny, asyncHandler(async (req, res) => {
     const { userId, role, message } = req.body;
     
     // Validate workspace exists
@@ -395,7 +398,7 @@ app.post('/api/workspaces/:workspaceId/members', asyncHandler(async (req, res) =
     sendCreated(res, member, 'Member added successfully');
 }));
 
-app.delete('/api/workspaces/:workspaceId/members/:memberId', asyncHandler(async (req, res) => {
+app.delete('/api/workspaces/:workspaceId/members/:memberId', authenticateSupabaseAny, asyncHandler(async (req, res) => {
     const member = await prisma.workspaceMember.findUnique({ where: { id: req.params.memberId } });
     if (!member) {
         return sendError(res, 'Member not found', 404);
@@ -409,7 +412,7 @@ app.delete('/api/workspaces/:workspaceId/members/:memberId', asyncHandler(async 
 }));
 
 // ==================== PROJECT ROUTES ====================
-app.get('/api/projects', authenticateAny, validateProject.getAll, asyncHandler(async (req, res) => {
+app.get('/api/projects', authenticateSupabaseAny, validateProject.getAll, asyncHandler(async (req, res) => {
     const { workspaceId } = req.query;
     const where = workspaceId ? { workspaceId } : {};
     
@@ -493,7 +496,7 @@ app.get('/api/projects/:id', validateProject.getById, asyncHandler(async (req, r
     sendSuccess(res, project);
 }));
 
-app.post('/api/projects', authenticateAny, validateProject.create, asyncHandler(async (req, res) => {
+app.post('/api/projects', authenticateSupabaseAny, validateProject.create, asyncHandler(async (req, res) => {
     const { name, description, priority, status, start_date, end_date, team_lead, workspaceId, progress, memberIds } = req.body;
     
     // Validate workspace exists
@@ -560,7 +563,7 @@ app.post('/api/projects', authenticateAny, validateProject.create, asyncHandler(
     sendCreated(res, project, 'Project created successfully');
 }));
 
-app.put('/api/projects/:id', authenticateAny, validateProject.update, asyncHandler(async (req, res) => {
+app.put('/api/projects/:id', authenticateSupabaseAny, validateProject.update, asyncHandler(async (req, res) => {
     const { name, description, priority, status, start_date, end_date, progress } = req.body;
     
     // Check if project exists
@@ -615,7 +618,7 @@ app.put('/api/projects/:id', authenticateAny, validateProject.update, asyncHandl
     sendSuccess(res, project, 'Project updated successfully');
 }));
 
-app.delete('/api/projects/:id', authenticateAny, validateProject.getById, asyncHandler(async (req, res) => {
+app.delete('/api/projects/:id', authenticateSupabaseAny, validateProject.getById, asyncHandler(async (req, res) => {
     const project = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (!project) {
         return sendError(res, 'Project not found', 404);
@@ -629,7 +632,7 @@ app.delete('/api/projects/:id', authenticateAny, validateProject.getById, asyncH
 }));
 
 // ==================== PROJECT MEMBER ROUTES ====================
-app.post('/api/projects/:projectId/members', asyncHandler(async (req, res) => {
+app.post('/api/projects/:projectId/members', authenticateSupabaseAny, asyncHandler(async (req, res) => {
     const { userId } = req.body;
     
     // Validate project exists
@@ -659,7 +662,7 @@ app.post('/api/projects/:projectId/members', asyncHandler(async (req, res) => {
     sendCreated(res, member, 'Member added successfully');
 }));
 
-app.delete('/api/projects/:projectId/members/:memberId', asyncHandler(async (req, res) => {
+app.delete('/api/projects/:projectId/members/:memberId', authenticateSupabaseAny, asyncHandler(async (req, res) => {
     const member = await prisma.projectMember.findUnique({ where: { id: req.params.memberId } });
     if (!member) {
         return sendError(res, 'Member not found', 404);
@@ -673,7 +676,7 @@ app.delete('/api/projects/:projectId/members/:memberId', asyncHandler(async (req
 }));
 
 // ==================== TASK ROUTES ====================
-app.get('/api/tasks', authenticateAny, validateTask.getAll, asyncHandler(async (req, res) => {
+app.get('/api/tasks', authenticateSupabaseAny, validateTask.getAll, asyncHandler(async (req, res) => {
     const { projectId } = req.query;
     const where = projectId ? { projectId } : {};
     
@@ -741,7 +744,7 @@ app.get('/api/tasks/:id', validateTask.getById, asyncHandler(async (req, res) =>
     sendSuccess(res, task);
 }));
 
-app.post('/api/tasks', authenticateAny, validateTask.create, asyncHandler(async (req, res) => {
+app.post('/api/tasks', authenticateSupabaseAny, validateTask.create, asyncHandler(async (req, res) => {
     const { projectId, title, description, status, type, priority, assigneeId, due_date } = req.body;
     
     // Validate project exists
@@ -787,7 +790,7 @@ app.post('/api/tasks', authenticateAny, validateTask.create, asyncHandler(async 
     sendCreated(res, task, 'Task created successfully');
 }));
 
-app.put('/api/tasks/:id', authenticateAny, validateTask.update, asyncHandler(async (req, res) => {
+app.put('/api/tasks/:id', authenticateSupabaseAny, validateTask.update, asyncHandler(async (req, res) => {
     const { title, description, status, type, priority, assigneeId, due_date } = req.body;
     
     // Check if task exists
@@ -847,7 +850,7 @@ app.put('/api/tasks/:id', authenticateAny, validateTask.update, asyncHandler(asy
     sendSuccess(res, task, 'Task updated successfully');
 }));
 
-app.delete('/api/tasks/:id', authenticateAny, validateTask.getById, asyncHandler(async (req, res) => {
+app.delete('/api/tasks/:id', authenticateSupabaseAny, validateTask.getById, asyncHandler(async (req, res) => {
     const task = await prisma.task.findUnique({ where: { id: req.params.id } });
     if (!task) {
         return sendError(res, 'Task not found', 404);
@@ -861,7 +864,7 @@ app.delete('/api/tasks/:id', authenticateAny, validateTask.getById, asyncHandler
 }));
 
 // ==================== COMMENT ROUTES ====================
-app.get('/api/tasks/:taskId/comments', authenticateAny, validateComment.getByTaskId, asyncHandler(async (req, res) => {
+app.get('/api/tasks/:taskId/comments', authenticateSupabaseAny, validateComment.getByTaskId, asyncHandler(async (req, res) => {
     // Validate task exists
     const task = await prisma.task.findUnique({ where: { id: req.params.taskId } });
     if (!task) {
@@ -881,7 +884,7 @@ app.get('/api/tasks/:taskId/comments', authenticateAny, validateComment.getByTas
     sendSuccess(res, comments);
 }));
 
-app.post('/api/tasks/:taskId/comments', authenticateAny, validateComment.create, asyncHandler(async (req, res) => {
+app.post('/api/tasks/:taskId/comments', authenticateSupabaseAny, validateComment.create, asyncHandler(async (req, res) => {
     const { content, userId } = req.body;
     
     // Validate task exists
@@ -912,7 +915,7 @@ app.post('/api/tasks/:taskId/comments', authenticateAny, validateComment.create,
     sendCreated(res, comment, 'Comment created successfully');
 }));
 
-app.delete('/api/comments/:id', authenticateAny, validateComment.delete, asyncHandler(async (req, res) => {
+app.delete('/api/comments/:id', authenticateSupabaseAny, validateComment.delete, asyncHandler(async (req, res) => {
     const comment = await prisma.comment.findUnique({ where: { id: req.params.id } });
     if (!comment) {
         return sendError(res, 'Comment not found', 404);

@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
+import { selectCurrentWorkspace } from "../features/selectors";
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { deleteTask, updateTask, fetchWorkspaceById } from "../features/workspaceSlice";
@@ -23,7 +24,7 @@ const priorityTexts = {
 const ProjectTasks = ({ tasks }) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { currentWorkspace } = useSelector((state) => state.workspace);
+    const currentWorkspace = useSelector(selectCurrentWorkspace);
     const [selectedTasks, setSelectedTasks] = useState([]);
 
     const [filters, setFilters] = useState({

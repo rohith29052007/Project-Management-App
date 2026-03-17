@@ -1,18 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Mail, Lock, User, Github } from 'lucide-react';
+import { Mail, Lock, User, Github, Chrome } from 'lucide-react';
+import { signUp, signInWithOAuth, getSession } from '../services/supabase';
 
 const Register = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        username: '',
         password: '',
         confirmPassword: ''
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+    useEffect(() => {
+        // Check if user is already logged in
+        const checkAuth = async () => {
+            try {
+                const session = await getSession();
+                if (session) {
+                    navigate('/');
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+            } finally {
+                setIsCheckingAuth(false);
+            }
+        };
+
+        checkAuth();
+    }, [navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -30,35 +49,43 @@ const Register = () => {
         setIsLoading(true);
 
         try {
-            const { confirmPassword, ...registerData } = formData;
-            
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(registerData)
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Registration failed');
-            }
-
-            // Store token
-            localStorage.setItem('token', data.data.token);
-            localStorage.setItem('user', JSON.stringify(data.data.user));
-
-            toast.success('Account created successfully!');
-            navigate('/');
-            window.location.reload();
+            await signUp(formData.email, formData.password, formData.name);
+            toast.success('Account created! Please check your email to confirm your account.');
+            // Redirect to login after a short delay
+            setTimeout(() => {
+                navigate('/login');
+            }, 2000);
         } catch (error) {
             toast.error(error.message || 'Registration failed');
+            console.error('Registration error:', error);
         } finally {
             setIsLoading(false);
         }
     };
+
+    const handleOAuthSignUp = async (provider) => {
+        try {
+            setIsLoading(true);
+            await signInWithOAuth(provider);
+            // Supabase handles the redirect automatically
+        } catch (error) {
+            toast.error(`${provider} signup failed: ${error.message}`);
+            console.error('OAuth error:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (isCheckingAuth) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950">
+                <div className="text-center">
+                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-500"></div>
+                    <p className="mt-4 text-gray-600 dark:text-zinc-400">Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950 px-4 py-12">
@@ -99,6 +126,7 @@ const Register = () => {
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="John Doe"
+                                disabled={isLoading}
                             />
                         </div>
                     </div>
@@ -120,31 +148,9 @@ const Register = () => {
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="you@example.com"
+                                disabled={isLoading}
                             />
                         </div>
-                    </div>
-
-                    {/* Username */}
-                    <div>
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
-                            Username <span className="text-gray-400 text-xs">(optional)</span>
-                        </label>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
-                            <input
-                                id="username"
-                                name="username"
-                                type="text"
-                                value={formData.username}
-                                onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                                className="pl-8 w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="johndoe"
-                                pattern="[a-z0-9-]+"
-                            />
-                        </div>
-                        <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
-                            Only lowercase letters, numbers, and hyphens
-                        </p>
                     </div>
 
                     {/* Password */}
@@ -165,6 +171,7 @@ const Register = () => {
                                 className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="••••••••"
                                 minLength={8}
+                                disabled={isLoading}
                             />
                         </div>
                         <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
@@ -189,6 +196,7 @@ const Register = () => {
                                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                                 className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="••••••••"
+                                disabled={isLoading}
                             />
                         </div>
                     </div>
@@ -204,6 +212,41 @@ const Register = () => {
                         </button>
                     </div>
                 </form>
+
+                {/* Divider */}
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300 dark:border-zinc-700" />
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-gray-50 dark:bg-zinc-950 text-gray-500 dark:text-zinc-400">
+                            Or sign up with
+                        </span>
+                    </div>
+                </div>
+
+                {/* OAuth Buttons */}
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Google */}
+                    <button
+                        type="button"
+                        onClick={() => handleOAuthSignUp('google')}
+                        disabled={isLoading}
+                        className="flex items-center justify-center py-2.5 px-4 border border-gray-300 dark:border-zinc-700 rounded-lg shadow-sm text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                        <Chrome className="w-5 h-5" />
+                    </button>
+
+                    {/* GitHub */}
+                    <button
+                        type="button"
+                        onClick={() => handleOAuthSignUp('github')}
+                        disabled={isLoading}
+                        className="flex items-center justify-center py-2.5 px-4 border border-gray-300 dark:border-zinc-700 rounded-lg shadow-sm text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                        <Github className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
         </div>
     );
