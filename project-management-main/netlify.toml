@@ -9,3 +9,10 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# SPA routing redirect - ensures all routes go to index.html
+[[redirects]]
+  from = "/auth/*"
+  to = "/index.html"
+  status = 200
+
