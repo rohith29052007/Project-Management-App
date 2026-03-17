@@ -1,6 +1,35 @@
 import { getAccessToken } from './supabase';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// ============================================
+// API SERVICE - NOW USING SUPABASE
+// This file now imports and re-exports Supabase services
+// No more HTTP calls to Node.js backend
+// ============================================
+
+import {
+  workspaceService,
+  projectService,
+  taskService,
+  teamService,
+  profileService,
+  realtimeService,
+  analyticsService,
+  activityService
+} from './supabaseServices';
+
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Export all Supabase services
+export {
+  workspaceService,
+  projectService,
+  taskService,
+  teamService,
+  profileService,
+  realtimeService,
+  analyticsService,
+  activityService
+};
 
 const apiRequest = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
