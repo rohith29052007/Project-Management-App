@@ -1,59 +1,59 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { workspaceAPI, projectAPI, taskAPI, commentAPI } from "../services/api";
+import { workspaceService, projectService, taskService, activityService } from "../services/supabaseServices";
 
 // Async thunks
 export const fetchWorkspaces = createAsyncThunk(
     'workspace/fetchWorkspaces',
     async () => {
-        const response = await workspaceAPI.getAll();
-        return response.data || response || [];
+        const response = await workspaceService.getWorkspaces();
+        return response || [];
     }
 );
 
 export const fetchWorkspaceById = createAsyncThunk(
     'workspace/fetchWorkspaceById',
     async (id) => {
-        const response = await workspaceAPI.getById(id);
-        return response.data || response;
+        const response = await workspaceService.getWorkspace(id);
+        return response;
     }
 );
 
 export const createWorkspace = createAsyncThunk(
     'workspace/createWorkspace',
     async (workspaceData) => {
-        const response = await workspaceAPI.create(workspaceData);
-        return response.data || response;
+        const response = await workspaceService.createWorkspace(workspaceData);
+        return response;
     }
 );
 
 export const updateWorkspace = createAsyncThunk(
     'workspace/updateWorkspace',
     async ({ id, data }) => {
-        const response = await workspaceAPI.update(id, data);
-        return response.data || response;
+        const response = await workspaceService.updateWorkspace(id, data);
+        return response;
     }
 );
 
 export const createProject = createAsyncThunk(
     'workspace/createProject',
     async (projectData) => {
-        const response = await projectAPI.create(projectData);
-        return response.data || response;
+        const response = await projectService.createProject(projectData);
+        return response;
     }
 );
 
 export const updateProject = createAsyncThunk(
     'workspace/updateProject',
     async ({ id, data }) => {
-        const response = await projectAPI.update(id, data);
-        return response.data || response;
+        const response = await projectService.updateProject(id, data);
+        return response;
     }
 );
 
 export const deleteProject = createAsyncThunk(
     'workspace/deleteProject',
     async (id) => {
-        await projectAPI.delete(id);
+        await projectService.deleteProject(id);
         return id;
     }
 );
@@ -61,32 +61,24 @@ export const deleteProject = createAsyncThunk(
 export const createTask = createAsyncThunk(
     'workspace/createTask',
     async (taskData) => {
-        const response = await taskAPI.create(taskData);
-        return response.data || response;
+        const response = await taskService.createTask(taskData);
+        return response;
     }
 );
 
 export const updateTask = createAsyncThunk(
     'workspace/updateTask',
     async ({ id, data }) => {
-        const response = await taskAPI.update(id, data);
-        return response.data || response;
+        const response = await taskService.updateTask(id, data);
+        return response;
     }
 );
 
 export const deleteTask = createAsyncThunk(
     'workspace/deleteTask',
     async (id) => {
-        await taskAPI.delete(id);
+        await taskService.deleteTask(id);
         return id;
-    }
-);
-
-export const createComment = createAsyncThunk(
-    'workspace/createComment',
-    async ({ taskId, data }) => {
-        const response = await commentAPI.create(taskId, data);
-        return response.data || response;
     }
 );
 

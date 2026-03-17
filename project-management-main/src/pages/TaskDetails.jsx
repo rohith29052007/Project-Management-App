@@ -4,34 +4,18 @@ import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CalendarIcon, MessageCircle, PenIcon } from "lucide-react";
-import { commentAPI } from "../services/api";
-import { createComment } from "../features/workspaceSlice";
-import { useUser } from "@clerk/clerk-react";
 
 const TaskDetails = () => {
     const dispatch = useDispatch();
-    const { user } = useUser();
     const [searchParams] = useSearchParams();
     const projectId = searchParams.get("projectId");
     const taskId = searchParams.get("taskId");
 
     const [task, setTask] = useState(null);
     const [project, setProject] = useState(null);
-    const [comments, setComments] = useState([]);
-    const [newComment, setNewComment] = useState("");
     const [loading, setLoading] = useState(true);
 
     const { currentWorkspace } = useSelector((state) => state.workspace);
-
-    const fetchComments = async () => {
-        if (!taskId) return;
-        try {
-            const fetchedComments = await commentAPI.getByTaskId(taskId);
-            setComments(fetchedComments);
-        } catch (error) {
-            console.error("Failed to fetch comments:", error);
-        }
-    };
 
     const fetchTaskDetails = async () => {
         setLoading(true);
@@ -57,43 +41,7 @@ const TaskDetails = () => {
         setLoading(false);
     };
 
-    const handleAddComment = async () => {
-        if (!newComment.trim() || !taskId || !user) return;
-
-        try {
-            toast.loading("Adding comment...");
-
-            // For now, use a placeholder user ID. In production, get from Clerk user
-            const userId = user.id || 'user_1';
-
-            const comment = await dispatch(createComment({
-                taskId,
-                data: {
-                    content: newComment,
-                    userId
-                }
-            })).unwrap();
-            
-            setComments((prev) => [comment, ...prev]);
-            setNewComment("");
-            toast.dismissAll();
-            toast.success("Comment added.");
-        } catch (error) {
-            toast.dismissAll();
-            toast.error(error?.message || "Failed to add comment");
-            console.error(error);
-        }
-    };
-
     useEffect(() => { fetchTaskDetails(); }, [taskId]);
-
-    useEffect(() => {
-        if (taskId && task) {
-            fetchComments();
-            const interval = setInterval(() => { fetchComments(); }, 10000);
-            return () => clearInterval(interval);
-        }
-    }, [taskId, task]);
 
     if (loading) return <div className="text-gray-500 dark:text-zinc-400 px-4 py-6">Loading task details...</div>;
     if (!task) return <div className="text-red-500 px-4 py-6">Task not found.</div>;
