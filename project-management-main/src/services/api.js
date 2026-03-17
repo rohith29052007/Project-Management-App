@@ -1,9 +1,7 @@
-import { getAccessToken } from './supabase';
-
 // ============================================
-// API SERVICE - NOW USING SUPABASE
-// This file now imports and re-exports Supabase services
-// No more HTTP calls to Node.js backend
+// API SERVICE - NOW USING SUPABASE ONLY
+// This file imports and re-exports Supabase services
+// All CRUD operations go directly to Supabase
 // ============================================
 
 import {
@@ -17,8 +15,6 @@ import {
   activityService
 } from './supabaseServices';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
 // Export all Supabase services
 export {
   workspaceService,
@@ -30,23 +26,6 @@ export {
   analyticsService,
   activityService
 };
-
-const apiRequest = async (endpoint, options = {}) => {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const token = await getAccessToken(); // Get Supabase token
-    
-    const config = {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` }),
-            ...options.headers,
-        },
-        ...options,
-    };
-
-    if (config.body && typeof config.body === 'object') {
-        config.body = JSON.stringify(config.body);
-    }
 
     try {
         const response = await fetch(url, config);
