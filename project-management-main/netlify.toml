@@ -5,12 +5,13 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# SPA routing - redirect all non-existent paths to index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# SPA routing redirect - ensures all routes go to index.html
+# Ensure auth callbacks work
 [[redirects]]
   from = "/auth/*"
   to = "/index.html"
